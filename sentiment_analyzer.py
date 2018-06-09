@@ -109,18 +109,9 @@ def leave_one_out():
 
 read_data()
 tokenize()
-pprint.pprint(WORD_DATA)
-total_NEG = 0
-total_POS = 0
-for word in WORD_DATA:
-    total_NEG += WORD_DATA[word]["NEG"]
-    total_POS += WORD_DATA[word]["POS"]
-print(total_NEG , total_POS)
-# features0 = get_frequent_words(100)
-# pprint.pprint(features0)
-# pprint.pprint(WORD_DATA)
+
 output = leave_one_out()
-print(output)
+
 print("NEG:\n")
 precision = output[1]/(output[1]+output[4])
 recall = output[1]/(output[1]+output[2])
@@ -129,6 +120,7 @@ fscore = ((1+b**2)/b**2) * ((precision*recall)/(precision+recall))
 print("Precision : ", precision)
 print("Recall : ", recall)
 print("F-measure : ", fscore)
+
 print("----------------------------")
 print("POS:\n")
 precision = output[3]/(output[3]+output[2])
