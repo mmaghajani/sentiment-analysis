@@ -1,4 +1,5 @@
 import pprint
+import copy
 
 NUMBER_OF_LINE_IN_RAW_DATA = 519
 DATA = dict()  # A dictionary of sets for each class
@@ -15,21 +16,21 @@ def read_data():
             cnt += 1
             data = line.split("@")
             tag = data[0]
-            doc = data[1].strip("\n")
+            doc = data[1].replace("\n", " ").replace(".", " ").replace(",", " ")
             if tag not in DATA.keys():
-                DATA[tag] = set()
-                DATA[tag].add(doc)
+                DATA[tag] = list()
+                DATA[tag].append(doc)
             else:
-                DATA.get(tag).add(doc)
+                DATA[tag].append(doc)
 
 
 def tokenize():
     global WORD_DATA
     domains = list(DATA.keys())
     for domain in domains:
-        docs = DATA.get(domain)
-        for doc in docs:
-            words = set(doc.split(" "))
+        sentences = DATA.get(domain)
+        for sentence in sentences:
+            words = list(sentence.split(" "))
             for word in words:
                 if word not in WORD_DATA.keys():
                     WORD_DATA[word] = {"all": 1, domains[0]: 0, domains[1]: 0}
@@ -59,10 +60,17 @@ def classify(sentence, word_data):
         total_POS += word_data[word]["POS"]
     for word in sentence.split(" "):
         if word is not "":
-            NEG_prob *= word_data[word]["NEG"] / total_NEG
-            POS_prob *= word_data[word]["POS"] / total_POS
+            if word_data[word]["NEG"] is not 0:
+                NEG_prob *= (word_data[word]["NEG"] / total_NEG)
+            else:
+                NEG_prob *= 0.00024
 
-    if NEG_prob > POS_prob :
+            if word_data[word]["POS"] is not 0:
+                POS_prob *= (word_data[word]["POS"] / total_POS)
+            else:
+                POS_prob *= 0.00024
+
+    if NEG_prob > POS_prob:
         return "NEG"
     else:
         return "POS"
@@ -78,7 +86,7 @@ def leave_one_out():
     for tag in tags:
         sentences = DATA.get(tag)
         for sentence in sentences:
-            word_data = WORD_DATA
+            word_data = copy.deepcopy(WORD_DATA)
             words = sentence.split(" ")
             for word in words:
                 if word is not "":
@@ -101,9 +109,16 @@ def leave_one_out():
 
 read_data()
 tokenize()
+pprint.pprint(WORD_DATA)
+total_NEG = 0
+total_POS = 0
+for word in WORD_DATA:
+    total_NEG += WORD_DATA[word]["NEG"]
+    total_POS += WORD_DATA[word]["POS"]
+print(total_NEG , total_POS)
 # features0 = get_frequent_words(100)
 # pprint.pprint(features0)
-
+# pprint.pprint(WORD_DATA)
 output = leave_one_out()
 print(output)
 print("NEG:\n")
