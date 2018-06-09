@@ -1,4 +1,3 @@
-import pprint
 import copy
 
 NUMBER_OF_LINE_IN_RAW_DATA = 519
@@ -45,29 +44,25 @@ def tokenize():
             break
 
 
-def get_frequent_words(k):
-    new_word_data = sorted(WORD_DATA.items(), key=lambda x: x[1]["all"], reverse=True)
-    return list(map(lambda x: x[0], dict(new_word_data[:k]).items()))
-
-
 def classify(sentence, word_data):
-    NEG_prob = 1
-    POS_prob = 1
-    total_NEG = 0
-    total_POS = 0
+    NEG_prob = 1    # NEG probability of the sentence
+    POS_prob = 1    # POS probability of the sentence
+    total_NEG = 0   # Number of whole words in NEG category
+    total_POS = 0   # Number of whole words in POS category
     for word in word_data:
         total_NEG += word_data[word]["NEG"]
         total_POS += word_data[word]["POS"]
+
     for word in sentence.split(" "):
         if word is not "":
             if word_data[word]["NEG"] is not 0:
                 NEG_prob *= (word_data[word]["NEG"] / total_NEG)
-            else:
+            else:   # smoothing
                 NEG_prob *= 0.00024
 
             if word_data[word]["POS"] is not 0:
                 POS_prob *= (word_data[word]["POS"] / total_POS)
-            else:
+            else:   # smoothing
                 POS_prob *= 0.00024
 
     if NEG_prob > POS_prob:
@@ -77,21 +72,23 @@ def classify(sentence, word_data):
 
 
 def leave_one_out():
-    cnt = 0
-    nn = 0
-    np = 0
-    pn = 0
-    pp = 0
+    cnt = 0     # Number of correct prediction
+    nn = 0      # Number of correct prediction for NEG category
+    np = 0      # Number of wrong prediction for NEG category
+    pn = 0      # Number of wrong prediction for POS category
+    pp = 0      # Number of correct prediction for POS category
     tags = list(DATA.keys())
     for tag in tags:
         sentences = DATA.get(tag)
         for sentence in sentences:
+            # removes one row for leave-one-out evaluation
             word_data = copy.deepcopy(WORD_DATA)
             words = sentence.split(" ")
             for word in words:
                 if word is not "":
                     word_data[word]["all"] -= 1
                     word_data[word][tag] -= 1
+
             predicted_tag = classify(sentence, word_data)
             if predicted_tag == tag and tag == "NEG":
                 cnt += 1
@@ -120,8 +117,8 @@ fscore = ((1+b**2)/b**2) * ((precision*recall)/(precision+recall))
 print("Precision : ", precision)
 print("Recall : ", recall)
 print("F-measure : ", fscore)
-
 print("----------------------------")
+
 print("POS:\n")
 precision = output[3]/(output[3]+output[2])
 recall = output[3]/(output[3]+output[4])
@@ -130,5 +127,6 @@ fscore = ((1+b**2)/b**2) * ((precision*recall)/(precision+recall))
 print("Precision : ", precision)
 print("Recall : ", recall)
 print("F-measure : ", fscore)
+
 print("============================")
 print("Accuracy : ", (output[1]+output[3])/(output[1]+output[2]+output[3]+output[4]))
