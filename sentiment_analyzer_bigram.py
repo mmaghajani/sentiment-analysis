@@ -1,8 +1,10 @@
 import copy
+import pprint
 
 NUMBER_OF_LINE_IN_RAW_DATA = 519
 DATA = dict()  # A dictionary of sets for each class
 WORD_DATA = dict()  # A dictionary for all words
+BIGRAM_DATA = dict()    # A dictionary for bigram phrase
 
 
 def read_data():
@@ -26,11 +28,18 @@ def read_data():
 
 def tokenize():
     global WORD_DATA
+    global BIGRAM_DATA
     domains = list(DATA.keys())
     for domain in domains:
         sentences = DATA.get(domain)
         for sentence in sentences:
             words = list(sentence.split(" "))
+            index = 0
+            while True:
+                try:
+                    words.remove("")
+                except ValueError as e:
+                    break
             for word in words:
                 if word not in WORD_DATA.keys():
                     WORD_DATA[word] = {"all": 1, domains[0]: 0, domains[1]: 0}
@@ -38,14 +47,20 @@ def tokenize():
                 else:
                     WORD_DATA[word][domain] += 1
                     WORD_DATA[word]["all"] += 1
-    while True:
-        try:
-            WORD_DATA.pop("")
-        except KeyError as e:
-            break
+
+                # Bigram
+                if index < len(words)-1:
+                    if words[index] + " " + words[index+1] not in BIGRAM_DATA.keys():
+                        BIGRAM_DATA[words[index] + " " + words[index+1]] = \
+                            {"all": 1, domains[0]: 0, domains[1]: 0}
+                        BIGRAM_DATA[words[index] + " " + words[index+1]][domain] += 1
+                    else:
+                        BIGRAM_DATA[words[index] + " " + words[index+1]][domain] += 1
+                        BIGRAM_DATA[words[index] + " " + words[index+1]]["all"] += 1
+                    index += 1
 
 
-def classify(sentence, word_data):
+def classify(sentence, word_data, bigram_data):
     NEG_prob = 1    # NEG probability of the sentence
     POS_prob = 1    # POS probability of the sentence
     total_NEG = 0   # Number of whole words in NEG category
@@ -54,17 +69,29 @@ def classify(sentence, word_data):
         total_NEG += word_data[word]["NEG"]
         total_POS += word_data[word]["POS"]
 
-    for word in sentence.split(" "):
-        if word is not "":
-            if word_data[word]["NEG"] is not 0:
-                NEG_prob *= (word_data[word]["NEG"] / total_NEG)
-            else:   # smoothing
-                NEG_prob *= 0.00024
+    words = sentence.split(" ")
+    while True:
+        try:
+            words.remove("")
+        except ValueError as e:
+            break
 
-            if word_data[word]["POS"] is not 0:
-                POS_prob *= (word_data[word]["POS"] / total_POS)
-            else:   # smoothing
-                POS_prob *= 0.00024
+    for index in range(0, len(words)-1):
+        if bigram_data[words[index] + " " + words[index+1]]["NEG"] is not 0:
+            NEG_prob *= (bigram_data[words[index] + " " + words[index+1]]["NEG"] /
+                         word_data[words[index]]["NEG"])
+        # elif word_data[words[index]]["NEG"] is not 0:
+        #     NEG_prob *= (word_data[words[index]]["NEG"] / total_NEG)
+        else:   # smoothing
+            NEG_prob *= 0.0068
+
+        if bigram_data[words[index] + " " + words[index+1]]["POS"] is not 0:
+            POS_prob *= (bigram_data[words[index] + " " + words[index+1]]["POS"] /
+                         word_data[words[index]]["POS"])
+        # elif word_data[words[index]]["POS"] is not 0:
+        #     POS_prob *= (word_data[words[index]]["POS"] / total_POS)
+        else:   # smoothing
+            POS_prob *= 0.0068
 
     if NEG_prob > POS_prob:
         return "NEG"
@@ -84,13 +111,24 @@ def leave_one_out():
         for sentence in sentences:
             # removes one row for leave-one-out evaluation
             word_data = copy.deepcopy(WORD_DATA)
+            bigram_data = copy.deepcopy(BIGRAM_DATA)
             words = sentence.split(" ")
+            while True:
+                try:
+                    words.remove("")
+                except ValueError as e:
+                    break
+            index = 0
             for word in words:
                 if word is not "":
                     word_data[word]["all"] -= 1
                     word_data[word][tag] -= 1
+                    if index < len(words)-1:
+                        bigram_data[words[index] + " " + words[index+1]]["all"] -= 1
+                        bigram_data[words[index] + " " + words[index+1]][tag] -= 1
+                        index += 1
 
-            predicted_tag = classify(sentence, word_data)
+            predicted_tag = classify(sentence, word_data, bigram_data)
             if predicted_tag == tag and tag == "NEG":
                 cnt += 1
                 nn += 1
@@ -107,7 +145,7 @@ def leave_one_out():
 
 read_data()
 tokenize()
-
+pprint.pprint(BIGRAM_DATA)
 output = leave_one_out()
 
 print("NEG:\n")
